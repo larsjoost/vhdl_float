@@ -6,10 +6,8 @@ package techology is
 end package techology;
 
 library ieee;
-use ieee.numeric_std.unsigned;
-use ieee.numeric_std."+";
-use ieee.numeric_std."*";
-use ieee.numeric_std."-";
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 library work;
 use work.techology.vendors_t;
@@ -33,6 +31,8 @@ package float is
   end record float_t;
 
   --pragma synthesis_off
+
+  type shift_lut_t is array(0 to 2 ** exponent_width - 1) of unsigned(0 to mantissa_width - 1);
 
   function conv_real (
     l : float_t)
@@ -138,25 +138,111 @@ package body float is
     return l + x;
   end function "-";
 
-  function barrel_shift (
+  function get_shift_lut
+    return shift_lut_t is
+    variable x : shift_lut_t;
+    variable m : unsigned(0 to mantissa_width - 1);
+  begin
+    for i in x'range loop
+      m := (others => '0');
+      if (i < mantissa_width) then
+        m(i) := '1';
+      end if;
+      x(i) := m;
+    end loop;
+    return x;
+  end function get_shift_lut;
+
+  function round(
+    l : unsigned)
+    return unsigned is
+    variable x : unsigned(l'length - 1 downto 0);
+  begin
+    x := l;
+    if (x(0) = '1') then
+      x := x + 1;
+    end if;
+    return x(x'left downto 1);
+  end round;
+
+  function right_shift(
+    l : float_t;
+    e : unsigned)
+    return float_t is
+    constant shift_lut : shift_lut_t := get_shift_lut;
+    variable x         : unsigned(0 to mantissa_width - 1);
+    variable m         : unsigned(0 to 2 * mantissa_width - 1);
+    variable z         : float_t;
+  begin
+    x          := shift_lut(to_integer(unsigned(e)));
+    m          := l.mantissa * x;
+    z          := l;
+    z.mantissa := round(m(0 to mantissa_width));
+    return z;
+  end function right_shift;
+
+  function align_mantissa (
     l, r : float_t)
     return float_t is
     variable e : unsigned(0 to exponent_width - 1);
   begin
     e := l.exponent - r.exponent;
-  end function barrel_shift;
+    return right_shift(r, e);
+  end function align_mantissa;
+
+  function select_one(
+    l, r    : float_t;
+    largest : boolean)
+    return float_t is
+    variable x        : float_t;
+    variable select_l : boolean;
+  begin
+    select_l := l.exponent > r.exponent;
+    select_l := select_l when (largest)  else not select_l;
+    x        := l        when (select_l) else r;
+    return x;
+  end function select_one;
+
+  function select_largest(
+    l, r : float_t)
+    return float_t is
+  begin
+    return select_one(l, r, true);
+  end function select_largest;
+
+  function select_smallest(
+    l, r : float_t)
+    return float_t is
+  begin
+    return select_one(l, r, false);
+  end function select_smallest;
+
+  function add(
+    l, r : float_t)
+    return float_t is
+    variable m : unsigned(0 to mantissa_width);
+  begin
+    if (l.sign = r.sign) then
+      m := l.mantissa + r.mantissa;
+    else
+      m := l.mantissa - r.mantissa;
+    end if;
+
+  end function add;
 
   function "+" (
     l, r : float_t)
     return float_t is
     variable x, y : float_t;
+    variable m    : unsigned(0 to mantissa_width);
   begin
-    x := barrel_shift(l, r);
-    y := barrel_shift(r, l);
-
+    x := select_largest(l, r);
+    y := select_smallest(l, r);
+    y := align_mantissa(x, y);
+    return add(x, y);
   end function "+";
 
 end package body float;
 
-package single_float is new work.float generic map (mantissa_width => 23, exponent_width => 8);
+package float32 is new work.float generic map (mantissa_width => 23, exponent_width => 8);
 
