@@ -34,8 +34,6 @@ package float is
 
   --pragma synthesis_off
 
-  type shift_lut_t is array(0 to 2 ** exponent_width - 1) of unsigned(0 to mantissa_width - 1);
-
   function conv_real (
     l : float_t)
     return real;
@@ -79,8 +77,10 @@ package body float is
   function max_delay (
     l, r : float_t)
     return natural is
+    variable x : natural;
   begin
-    return maximum(l.delay, r.delay);
+    x := l.delay when (l.delay > r.delay) else r.delay;
+    return x;
   end function max_delay;
 
   function get_delay (
@@ -106,7 +106,9 @@ package body float is
     m := real(to_integer('1' & l.mantissa)) / real(2 ** mantissa_width - 1);
     e := real(to_integer(l.exponent) - exponent_bias);
     x := m * e;
-    x := -x when (l.sign) else x;
+    if (l.sign = '1') then
+      x := -x;
+    end if;
     return x;
   end function conv_real;
 
@@ -173,6 +175,8 @@ package body float is
     x := -r;
     return l + x;
   end function "-";
+
+  type shift_lut_t is array(0 to 2 ** exponent_width - 1) of unsigned(0 to mantissa_width - 1);
 
   function get_shift_lut
     return shift_lut_t is
@@ -281,6 +285,6 @@ package body float is
 end package body float;
 
 package float16 is new work.float generic map (mantissa_width => 10, exponent_width => 5);
-                   package float32 is new work.float generic map (mantissa_width => 23, exponent_width => 8);
-                                      package float64 is new work.float generic map (mantissa_width => 52, exponent_width => 11);
+package float32 is new work.float generic map (mantissa_width => 23, exponent_width => 8);
+package float64 is new work.float generic map (mantissa_width => 52, exponent_width => 11);
 
