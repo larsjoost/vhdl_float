@@ -21,7 +21,7 @@ package float is
     vendor         : vendors_t := XILINX);
 
   type float_t is record
-    sign     : boolean;
+    sign     : std_ulogic;
     exponent : unsigned(0 to exponent_width - 1);
     mantissa : unsigned(0 to mantissa_width - 1);
     --pragma synthesis_off
@@ -29,6 +29,8 @@ package float is
     value    : real;
   --pragma synthesis_on
   end record float_t;
+
+  constant exponent_bias : natural := 2 ** (exponent_width - 1) - 1;
 
   --pragma synthesis_off
 
@@ -44,6 +46,14 @@ package float is
 
   --pragma synthesis_on
 
+  function conv_std_ulogic_vector(
+    l : float_t)
+    return std_ulogic_vector;
+
+  function conv_float(
+    l : std_ulogic_vector)
+    return float_t;
+  
   function "*" (
     l, r : float_t)
     return float_t;
@@ -89,18 +99,44 @@ package body float is
   function conv_real (
     l : float_t)
     return real is
+    variable m : real;
+    variable e : real;
+    variable x : real;
   begin
-
+    m := real(to_integer('1' & l.mantissa)) / real(2 ** mantissa_width - 1);
+    e := real(to_integer(l.exponent) - exponent_bias);
+    x := m * e;
+    x := -x when (l.sign) else x;
+    return x;
   end function conv_real;
 
   function conv_float (
     l : real)
     return float_t is
   begin
-
+    
   end function conv_float;
 
   --pragma synthesis_on
+
+  function conv_std_ulogic_vector(
+    l : float_t)
+    return std_ulogic_vector is
+  begin
+    return l.sign & std_ulogic_vector(l.exponent) & std_ulogic_vector(l.mantissa);
+  end function conv_std_ulogic_vector;
+
+  function conv_float(
+    l : std_ulogic_vector)
+    return float_t is
+    alias a : std_ulogic_vector(0 to l'length - 1) is l;
+    variable x : float_t;
+  begin
+    x.sign := a(0);
+    x.exponent := unsigned(a(1 to exponent_width));
+    x.mantissa := unsigned(a(exponent_width + 1 to exponent_width + mantissa_width));
+    return x;
+  end function conv_float;
 
   function "*" (
     l, r : float_t)
@@ -108,7 +144,7 @@ package body float is
     variable x : float_t;
     variable m : unsigned(0 to 2*mantissa_width - 1);
   begin
-    x.sign     := (l.sign = r.sign);
+    x.sign     := '0' when (l.sign = r.sign) else '1';
     x.exponent := l.exponent + r.exponent;
     m          := l.mantissa * r.mantissa;
     x.mantissa := m(0 to mantissa_width - 1);
@@ -244,5 +280,7 @@ package body float is
 
 end package body float;
 
-package float32 is new work.float generic map (mantissa_width => 23, exponent_width => 8);
+package float16 is new work.float generic map (mantissa_width => 10, exponent_width => 5);
+                   package float32 is new work.float generic map (mantissa_width => 23, exponent_width => 8);
+                                      package float64 is new work.float generic map (mantissa_width => 52, exponent_width => 11);
 
