@@ -70,6 +70,11 @@ package float is
 
 end package float;
 
+library ieee;
+use ieee.math_real.log2;
+use ieee.math_real.floor;
+use ieee.math_real."**";
+
 package body float is
 
   --pragma synthesis_off
@@ -115,8 +120,16 @@ package body float is
   function conv_float (
     l : real)
     return float_t is
+    variable q : float_t;
+    variable e : natural;
+    variable m : real;
   begin
-    
+    q.sign := '1' when (l < 0.0) else '0';
+    e := integer(floor(log2(l)));
+    q.exponent := to_unsigned(e + exponent_bias, exponent_width);
+    m := l / (2.0 ** real(e)) * real(2 ** mantissa_width);
+    q.mantissa := to_unsigned(integer(m), mantissa_width);
+    return q;
   end function conv_float;
 
   --pragma synthesis_on
