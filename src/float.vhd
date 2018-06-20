@@ -14,11 +14,11 @@ use work.techology.vendors_t;
 use work.techology.XILINX;
 use work.techology.ALTERA;
 
-package float is
-  generic (
-    mantissa_width : positive  := 23;
-    exponent_width : positive  := 8;
-    vendor         : vendors_t := XILINX);
+package float32 is
+
+  constant  mantissa_width : positive  := 23;
+  constant  exponent_width : positive  := 8;
+  constant  vendor         : vendors_t := XILINX;
 
   type float_t is record
     sign     : std_ulogic;
@@ -68,14 +68,14 @@ package float is
     l, r : float_t)
     return float_t;
 
-end package float;
+end package float32;
 
 library ieee;
 use ieee.math_real.log2;
 use ieee.math_real.floor;
 use ieee.math_real."**";
 
-package body float is
+package body float32 is
 
   --pragma synthesis_off
 
@@ -109,7 +109,7 @@ package body float is
     variable x : real;
   begin
     m := real(to_integer('1' & l.mantissa)) / real(2 ** mantissa_width - 1);
-    e := real(to_integer(l.exponent) - exponent_bias);
+    e := 2.0 ** real(to_integer(l.exponent) - exponent_bias);
     x := m * e;
     if (l.sign = '1') then
       x := -x;
@@ -295,9 +295,6 @@ package body float is
     return add(x, y);
   end function "+";
 
-end package body float;
+end package body float32;
 
-package float16 is new work.float generic map (mantissa_width => 10, exponent_width => 5);
-package float32 is new work.float generic map (mantissa_width => 23, exponent_width => 8);
-package float64 is new work.float generic map (mantissa_width => 52, exponent_width => 11);
 
