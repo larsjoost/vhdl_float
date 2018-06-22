@@ -3,9 +3,12 @@ library ieee;
 use ieee.std_logic_1164.std_ulogic;
 use ieee.std_logic_1164.rising_edge;
 
+library work;
+use work.float32.float_t;
+
 entity float_delay is
   generic (
-    type float_t;
+--    type float_t;
     expected_delay                   : integer        := -1;
     delay                            : integer        := -1;
     expected_delay_mismatch_severity : severity_level := warning);
@@ -17,7 +20,14 @@ end entity float_delay;
 
 architecture rtl of float_delay is
 
-  constant max_delay : natural := maximum(expected_delay, delay);
+  function max(l, r : integer) return natural is
+    variable x : natural;
+  begin
+    x :=  l when (l > r) else r;
+    return x;
+  end function max;
+
+  constant max_delay : natural := max(expected_delay, delay); -- maximum(expected_delay, delay);
 
   type delay_t is array (0 to max_delay - 1) of float_t;
 

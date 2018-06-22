@@ -16,9 +16,9 @@ use work.techology.ALTERA;
 
 package float32 is
 
-  constant mantissa_width : positive  := 23;
-  constant exponent_width : positive  := 8;
-  constant vendor         : vendors_t := XILINX;
+  constant  mantissa_width : positive  := 23;
+  constant  exponent_width : positive  := 8;
+  constant  vendor         : vendors_t := XILINX;
 
   type float_t is record
     sign     : std_ulogic;
@@ -51,7 +51,7 @@ package float32 is
   function conv_float(
     l : std_ulogic_vector)
     return float_t;
-
+  
   function "*" (
     l, r : float_t)
     return float_t;
@@ -124,14 +124,13 @@ package body float32 is
     variable e : natural;
     variable m : real;
   begin
-    q.sign     := '1' when (l < 0.0) else '0';
-    e          := integer(floor(log2(l)));
+    q.sign := '1' when (l < 0.0) else '0';
+    e := integer(floor(log2(l)));
     q.exponent := to_unsigned(e + exponent_bias, exponent_width);
-    m          := l / (2.0 ** real(e)) * real(2 ** mantissa_width);
+    m := l / (2.0 ** real(e)) * real(2 ** mantissa_width);
     q.mantissa := to_unsigned(integer(m), mantissa_width);
-    --pragma synthesis_off
-    q.value    := conv_real(q);
-    --pragma synthesis_on
+    q.value := conv_real(q);
+    q.delay := 0;
     return q;
   end function conv_float;
 
@@ -141,18 +140,27 @@ package body float32 is
     l : float_t)
     return std_ulogic_vector is
   begin
+    --pragma synthesis_off
+    assert (l.delay = 0) 
+      report "Delay value is not zero, which implies that registers has not been added after the operators. The design might not meet timing." 
+      severity warning;
+    --pragma synthesis_on
     return l.sign & std_ulogic_vector(l.exponent) & std_ulogic_vector(l.mantissa);
   end function conv_std_ulogic_vector;
 
   function conv_float(
     l : std_ulogic_vector)
     return float_t is
-    alias a    : std_ulogic_vector(0 to l'length - 1) is l;
+    alias a : std_ulogic_vector(0 to l'length - 1) is l;
     variable x : float_t;
   begin
-    x.sign     := a(0);
+    x.sign := a(0);
     x.exponent := unsigned(a(1 to exponent_width));
     x.mantissa := unsigned(a(exponent_width + 1 to exponent_width + mantissa_width));
+    --pragma synthesis_off
+    x.value := conv_real(x);
+    x.delay := 0;
+    --pragma synthesis_on
     return x;
   end function conv_float;
 
@@ -162,7 +170,7 @@ package body float32 is
     variable x : float_t;
     variable e : unsigned(0 to exponent_width);
     variable m : unsigned(0 to 2*(mantissa_width + 1) - 1);
-  begin
+ begin
     x.sign := '0' when (l.sign = r.sign) else '1';
     e      := ('0' & l.exponent) + ('0' & r.exponent) - exponent_bias + 1;
     m      := ('1' & l.mantissa) * ('1' & r.mantissa);
@@ -177,7 +185,7 @@ package body float32 is
     x.delay    := max_delay(l, r) + get_delay("*");
     x.value    := conv_real(x);
     --pragma synthesis_on
-    return x;
+     return x;
   end function "*";
 
   function "-" (

@@ -3,9 +3,6 @@ library ieee;
 use ieee.std_logic_1164.all;
 
 entity tb_float is
-  port (
-    ok   : out std_ulogic;
-    done : out std_ulogic);
 end entity tb_float;
 
 library work;
@@ -13,29 +10,13 @@ use work.float32.float_t;
 use work.float32.conv_float;
 use work.float32.conv_real;
 use work.float32."*";
+use work.float_test.assert_almost_equal;
 
 library std;
 use std.env.finish;
 
 architecture behavior of tb_float is
 
-  function almost_equal(
-    l, r : real;
-    e : real := 0.001)
-    return boolean is
-  begin
-    return abs(l - r) < e;
-  end function almost_equal;
-
-  procedure assert_almost_equal(
-    l, r : in real;
-    e : in real := 0.001) is
-  begin
-    assert (almost_equal(l, r, e)) 
-      report "Value = " & real'image(l) &
-        ", but expected = " & real'image(r)
-      severity failure;
-  end procedure assert_almost_equal;
 
 begin
 
