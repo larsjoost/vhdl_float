@@ -6,6 +6,6 @@ Example:
 
 q <= (a + b) / c;
 
-registers_i: entity work.float_delay
-generic (delay => 10)
-port (a => q, q => q_out);
+registers_i: entity work.delay
+generic map (10)
+port map (clk, q, q_out);
